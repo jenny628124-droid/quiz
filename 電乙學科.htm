@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>電乙學科線上測驗</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; background: #f9f9f9; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .btn-group button { padding: 8px 15px; margin: 5px; border: 1px solid #007bff; background: white; color: #007bff; border-radius: 4px; cursor: pointer; }
+    .btn-group button.active { background: #007bff; color: white; }
+    .btn-start { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+    input[type="text"], input[type="number"] { padding: 6px; margin: 5px; }
+    .q-box { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="card" id="setup-panel">
+  <p>學號：<input type="text" id="studentId"> 姓名：<input type="text" id="studentName"></p>
+  
+  <p><strong>工作項目：</strong></p>
+  <div class="btn-group" id="cat-group">
+    <button onclick="selectCategory('工作項目01')">01</button>
+    <button onclick="selectCategory('工作項目02')">02</button>
+    <button onclick="selectCategory('工作項目03')">03</button>
+    <button onclick="selectCategory('工作項目04')">04</button>
+  </div>
+
+  <p><strong>共同科目：</strong></p>
+  <div class="btn-group">
+    <button onclick="selectCategory('共同-01')">共同-01</button>
+    <button onclick="selectCategory('共同-02')">共同-02</button>
+    <button onclick="selectCategory('共同-03')">共同-03</button>
+    <button onclick="selectCategory('共同-04')">共同-04</button>
+  </div>
+
+  <p>範圍限制 (選填)：從第 <input type="number" id="startQ" placeholder="全部"> 題 到第 <input type="number" id="endQ" placeholder="全部"> 題</p>
+  <p>抽出題數：<input type="number" id="countQ" value="20"> 題 <button class="btn-start" onclick="startQuiz()">開始抽題作答</button></p>
+</div>
+
+<div class="card" id="quiz-panel" style="display:none;">
+  <div id="questions-container"></div>
+  <button class="btn-start" onclick="submitQuiz()">提交試卷</button>
+</div>
+
+<script>
+  // 請把下面的網址換成您第二步取得的 API 網址
+  const API_URL = "https://script.google.com/macros/s/AKfycbw8tub3qETZdXxoLSpLk0jogZEtJIO9rxq7_P3tWYpnVXiTJ5jfLPfmSHLff0qHWpcoNQ/exec";
+  let selectedCategory = "";
+  let currentQuestions = [];
+
+  function selectCategory(cat) {
+    selectedCategory = cat;
+    document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+  }
+
+  function startQuiz() {
+    const id = document.getElementById('studentId').value;
+    const name = document.getElementById('studentName').value;
+    const count = document.getElementById('countQ').value;
+    const start = document.getElementById('startQ').value;
+    const end = document.getElementById('endQ').value;
+
+    if (!id || !name) return alert("請填寫學號與姓名");
+    if (!selectedCategory) return alert("請選擇工作項目或共同科目");
+
+    fetch(`${API_URL}?category=${selectedCategory}&count=${count}&start=${start}&end=${end}`)
+      .then(res => res.json())
+      .then(data => {
+        currentQuestions = data;
+        renderQuiz();
+      });
+  }
+
+  function renderQuiz() {
+    document.getElementById('setup-panel').style.display = 'none';
+    document.getElementById('quiz-panel').style.display = 'block';
+    const container = document.getElementById('questions-container');
+    container.innerHTML = "";
+
+    currentQuestions.forEach((q, index) => {
+      container.innerHTML += `
+        <div class="q-box">
+          <p><strong>${index + 1}. ${q[2]}</strong></p>
+          <label><input type="radio" name="q${index}" value="1"> A. ${q[3]}</label><br>
+          <label><input type="radio" name="q${index}" value="2"> B. ${q[4]}</label><br>
+          <label><input type="radio" name="q${index}" value="3"> C. ${q[5]}</label><br>
+          <label><input type="radio" name="q${index}" value="4"> D. ${q[6]}</label>
+        </div>
+      `;
+    });
+  }
+
+  function submitQuiz() {
+    let correctCount = 0;
+    const total = currentQuestions.length;
+    const perScore = 100 / total; // 動態算分數：20題=5分，25題=4分，50題=2分，80題=1.25分
+
+    currentQuestions.forEach((q, index) => {
+      const selected = document.querySelector(`input[name="q${index}"]:checked`);
+      if (selected && parseInt(selected.value) === parseInt(q[7])) {
+        correctCount++;
+      }
+    });
+
+    const finalScore = Math.round(correctCount * perScore);
+    alert(`測驗結束！您的總分為：${finalScore} 分`);
+
+    // 將成績傳回 Google 試算表
+    fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        studentId: document.getElementById('studentId').value,
+        studentName: document.getElementById('studentName').value,
+        category: selectedCategory,
+        score: finalScore
+      })
+    }).then(() => location.reload());
+  }
+</script>
+
+</body>
+</html>
