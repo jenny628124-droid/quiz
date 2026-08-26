@@ -66,12 +66,16 @@
     if (!id || !name) return alert("請填寫學號與姓名");
     if (!selectedCategory) return alert("請選擇工作項目或共同科目");
 
-    // 發送 GET 請求並加入 redirect: 'follow' 處理轉址
-    fetch(`${API_URL}?category=${encodeURIComponent(selectedCategory)}&count=${count}&start=${start}&end=${end}`, {
+    const targetUrl = `${API_URL}?category=${encodeURIComponent(selectedCategory)}&count=${count}&start=${start}&end=${end}`;
+
+    fetch(targetUrl, {
       method: 'GET',
       redirect: 'follow'
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("網路回應不正常");
+        return res.json();
+      })
       .then(data => {
         if (!data || data.length === 0) {
           alert("抓取不到題目，請確認試算表是否有對應分類資料！");
