@@ -282,12 +282,22 @@
   let selectedCategory = '';
   let activeQuestions = [];
 
-  function selectCategory(cat, btn) {
-    selectedCategory = cat;
-    const buttons = btn.parentElement.querySelectorAll('button');
-    buttons.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }
+  window.selectCategory = function(cat, btn) {
+  selectedCategory = cat;
+  
+  // 清除同一區塊內所有按鈕的高亮樣式
+  const buttons = btn.parentElement.querySelectorAll('button');
+  buttons.forEach(b => {
+    b.classList.remove('active');
+    b.style.backgroundColor = 'white';
+    b.style.color = '#007bff';
+  });
+
+  // 強制套用點擊按鈕的高亮樣式
+  btn.classList.add('active');
+  btn.style.backgroundColor = '#007bff';
+  btn.style.color = 'white';
+};
 
   function startQuiz() {
     if (!selectedCategory) {
