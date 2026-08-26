@@ -19,28 +19,28 @@
   <p>學號：<input type="text" id="studentId"> 姓名：<input type="text" id="studentName"></p>
   
   <p><strong>工作項目：</strong></p>
-  <div class="btn-group" id="cat-group">
-    <button onclick="selectCategory('工作項目01', event)">01</button>
-    <button onclick="selectCategory('工作項目02', event)">02</button>
-    <button onclick="selectCategory('工作項目03', event)">03</button>
-    <button onclick="selectCategory('工作項目04', event)">04</button>
+  <div class="btn-group">
+    <button type="button" onclick="selectCategory('工作項目01', this)">01</button>
+    <button type="button" onclick="selectCategory('工作項目02', this)">02</button>
+    <button type="button" onclick="selectCategory('工作項目03', this)">03</button>
+    <button type="button" onclick="selectCategory('工作項目04', this)">04</button>
   </div>
 
   <p><strong>共同科目：</strong></p>
   <div class="btn-group">
-    <button onclick="selectCategory('共同-01', event)">共同-01</button>
-    <button onclick="selectCategory('共同-02', event)">共同-02</button>
-    <button onclick="selectCategory('共同-03', event)">共同-03</button>
-    <button onclick="selectCategory('共同-04', event)">共同-04</button>
+    <button type="button" onclick="selectCategory('共同-01', this)">共同-01</button>
+    <button type="button" onclick="selectCategory('共同-02', this)">共同-02</button>
+    <button type="button" onclick="selectCategory('共同-03', this)">共同-03</button>
+    <button type="button" onclick="selectCategory('共同-04', this)">共同-04</button>
   </div>
 
   <p>範圍限制 (選填)：從第 <input type="number" id="startQ" placeholder="全部"> 題 到第 <input type="number" id="endQ" placeholder="全部"> 題</p>
-  <p>抽出題數：<input type="number" id="countQ" value="20"> 題 <button class="btn-start" onclick="startQuiz()">開始抽題作答</button></p>
+  <p>抽出題數：<input type="number" id="countQ" value="20"> 題 <button type="button" class="btn-start" onclick="startQuiz()">開始抽題作答</button></p>
 </div>
 
 <div class="card" id="quiz-panel" style="display:none;">
   <div id="questions-container"></div>
-  <button class="btn-start" onclick="submitQuiz()">提交試卷</button>
+  <button type="button" class="btn-start" onclick="submitQuiz()">提交試卷</button>
 </div>
 
 <script>
@@ -49,22 +49,24 @@
   let selectedCategory = "";
   let currentQuestions = [];
 
-  function selectCategory(cat, evt) {
+  // 修復點 1：簡化按鈕選擇邏輯，傳入 this 即可穩定控制高亮
+  function selectCategory(cat, btnElement) {
     selectedCategory = cat;
+    
+    // 清除所有按鈕的 active class
     document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
     
-    // 安全取得按鈕元素並加上高亮
-    const targetBtn = evt ? evt.target : window.event.srcElement;
-    if (targetBtn) {
-      targetBtn.classList.add('active');
+    // 為被點擊的按鈕加上 active class
+    if (btnElement) {
+      btnElement.classList.add('active');
     }
     console.log("已選擇分類：", selectedCategory);
   }
 
   function startQuiz() {
     console.log("「開始抽題作答」按鈕已被點擊");
-    const id = document.getElementById('studentId').value;
-    const name = document.getElementById('studentName').value;
+    const id = document.getElementById('studentId').value.trim();
+    const name = document.getElementById('studentName').value.trim();
     const count = document.getElementById('countQ').value;
     const start = document.getElementById('startQ').value;
     const end = document.getElementById('endQ').value;
@@ -74,16 +76,21 @@
 
     console.log("發送請求至 GAS API，參數：", { category: selectedCategory, count, start, end });
 
-    fetch(`${API_URL}?category=${selectedCategory}&count=${count}&start=${start}&end=${end}`)
+    // 發送 GET 請求
+    fetch(`${API_URL}?category=${encodeURIComponent(selectedCategory)}&count=${count}&start=${start}&end=${end}`)
       .then(res => res.json())
       .then(data => {
         console.log("成功獲取題目：", data);
+        if (!data || data.length === 0) {
+          alert("抓取不到題目，請確認試算表是否有對應分類資料！");
+          return;
+        }
         currentQuestions = data;
         renderQuiz();
       })
       .catch(err => {
         console.error("API 請求失敗：", err);
-        alert("資料抓取失敗，請確認網路連線或 GAS 是否已開放權限為『所有人』。");
+        alert("資料抓取失敗，請確認網路連線或 GAS 部署權限。");
       });
   }
 
@@ -121,8 +128,13 @@
     const finalScore = Math.round(correctCount * perScore);
     alert(`測驗結束！您的總分為：${finalScore} 分`);
 
+    // 修復點 2：加入 mode: 'no-cors' 避開 GAS POST 跨網域阻擋
     fetch(API_URL, {
       method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
         studentId: document.getElementById('studentId').value,
         studentName: document.getElementById('studentName').value,
