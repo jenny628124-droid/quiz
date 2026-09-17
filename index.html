@@ -55,6 +55,17 @@
 </div>
 
 <script>
+  // ================= 雲端硬碟(Google表單)回傳設定 =================
+  const GOOGLE_FORM_ACTION_URL = "https://docs.google.com/forms/d/e/1FAIpQLSe_BceRhCT5Lo14uIKCTp_HidqNBUMOFCsT8Lq2jyPa5u9sNQ/formResponse";
+
+  const FORM_ENTRY_IDS = {
+    studentId:   "entry.636950426",   // 學號
+    studentName: "entry.1622565735",  // 姓名
+    category:    "entry.816196584",   // 工作項目/科目
+    count:       "entry.2121615302",  // 抽出題數
+    score:       "entry.749347414"    // 測驗分數
+  };
+
   // ================= 內建題庫資料區 =================
   const QUESTION_BANK = [
     ["工作項目01", 1, "在數據通訊（ Data Communication）系統中,線路兩端的電腦, 彼此可同時交互傳送及接受資料的型態稱為？", "單工", "半雙工", "全雙工", "線上雙工 。", 3],
@@ -689,6 +700,37 @@
     document.getElementById('quiz-result').innerHTML = `<div class="score-box">測驗結果：${finalScore} 分</div>`;
     document.getElementById('btn-submit').style.display = 'none';
     document.getElementById('btn-restart').style.display = 'inline-block';
+
+    // 將結果送到 Google 試算表 (雲端硬碟)
+    sendResultToCloud({
+      studentId: document.getElementById('studentId').value,
+      studentName: document.getElementById('studentName').value,
+      category: selectedCategory,
+      count: total,
+      score: finalScore
+    });
+  }
+
+  function sendResultToCloud(payload) {
+    if (!GOOGLE_FORM_ACTION_URL || GOOGLE_FORM_ACTION_URL.indexOf('【表單ID】') !== -1) {
+      console.warn('尚未設定 Google 表單 entry ID，測驗結果不會被記錄到雲端。');
+      return;
+    }
+
+    const formData = new URLSearchParams();
+    formData.append(FORM_ENTRY_IDS.studentId, payload.studentId);
+    formData.append(FORM_ENTRY_IDS.studentName, payload.studentName);
+    formData.append(FORM_ENTRY_IDS.category, payload.category);
+    formData.append(FORM_ENTRY_IDS.count, payload.count);
+    formData.append(FORM_ENTRY_IDS.score, payload.score);
+
+    fetch(GOOGLE_FORM_ACTION_URL, {
+      method: 'POST',
+      mode: 'no-cors', // Google表單跨網域限制,用 no-cors 送出即可,不需要讀回應
+      body: formData
+    }).catch(function (err) {
+      console.error('傳送測驗結果到 Google 表單失敗：', err);
+    });
   }
 </script>
 
